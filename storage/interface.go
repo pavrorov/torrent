@@ -33,3 +33,9 @@ type PieceImpl interface {
 	// Returns true if the piece is complete.
 	GetIsComplete() bool
 }
+
+// Provides a way to calculate the piece checksum.
+type PieceHasher interface {
+	// Returns the SHA1 hash sum of the piece.
+	Hash() metainfo.Hash
+}

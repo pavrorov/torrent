@@ -629,16 +629,24 @@ func (t *Torrent) hashPiece(piece int) (ret metainfo.Hash) {
 	hash := pieceHash.New()
 	p := &t.pieces[piece]
 	p.waitNoPendingWrites()
-	ip := t.info.Piece(piece)
-	pl := ip.Length()
-	n, err := io.Copy(hash, io.NewSectionReader(t.pieces[piece].Storage(), 0, pl))
-	if n == pl {
-		missinggo.CopyExact(&ret, hash.Sum(nil))
-		return
+
+	st := p.Storage()
+	switch sti := st.PieceImpl.(type) {
+	case storage.PieceHasher:
+		ret = sti.Hash()
+	default:
+		ip := t.info.Piece(piece)
+		pl := ip.Length()
+		n, err := io.Copy(hash, io.NewSectionReader(st, 0, pl))
+		if n == pl {
+			missinggo.CopyExact(&ret, hash.Sum(nil))
+			return
+		}
+		if err != io.ErrUnexpectedEOF && !os.IsNotExist(err) {
+			log.Printf("unexpected error hashing piece with %T: %s", t.storage.TorrentImpl, err)
+		}
 	}
-	if err != io.ErrUnexpectedEOF && !os.IsNotExist(err) {
-		log.Printf("unexpected error hashing piece with %T: %s", t.storage.TorrentImpl, err)
-	}
+
 	return
 }
 
